@@ -5,7 +5,6 @@ from src.models import Category, Product
 
 @pytest.fixture(autouse=True)
 def reset_counters() -> None:
-    """Сбрасывает счетчики перед каждым тестом, чтобы они не мешали друг другу."""
     Category.category_count = 0
     Category.product_count = 0
 
@@ -30,21 +29,43 @@ def test_product_init(sample_product: Product) -> None:
 def test_category_init(sample_category: Category) -> None:
     assert sample_category.name == "Test Category"
     assert sample_category.description == "Category desc"
-    assert len(sample_category.products) == 1
-    assert isinstance(sample_category.products[0], Product)
-
-
-def test_category_counters(sample_product: Product) -> None:
-    # Изначально счетчики должны быть на нуле (благодаря фикстуре reset_counters)
-    assert Category.category_count == 0
-    assert Category.product_count == 0
-
-    # Создаем первую категорию с 2 продуктами
-    Category("Cat 1", "Desc", [sample_product, sample_product])
     assert Category.category_count == 1
-    assert Category.product_count == 2
+    assert Category.product_count == 1
 
-    # Создаем вторую категорию с 1 продуктом
-    Category("Cat 2", "Desc", [sample_product])
-    assert Category.category_count == 2
-    assert Category.product_count == 3
+
+def test_category_add_product(
+    sample_category: Category, sample_product: Product
+) -> None:
+    assert Category.product_count == 1
+    sample_category.add_product(sample_product)
+    assert Category.product_count == 2
+    # Проверяем, что товар добавился в строку
+    assert sample_category.products.count("Test Phone") == 2
+
+
+def test_product_new_product() -> None:
+    data = {"name": "New Phone", "description": "Desc", "price": 500.0, "quantity": 5}
+    new_prod = Product.new_product(data)
+    assert isinstance(new_prod, Product)
+    assert new_prod.name == "New Phone"
+    assert new_prod.price == 500.0
+
+
+def test_product_price_setter(
+    sample_product: Product, capsys: pytest.CaptureFixture
+) -> None:
+    # Успешное изменение
+    sample_product.price = 2000.0
+    assert sample_product.price == 2000.0
+
+    # Неуспешное изменение (отрицательное)
+    sample_product.price = -100
+    captured = capsys.readouterr()
+    assert "Цена не должна быть нулевая или отрицательная" in captured.out
+    assert sample_product.price == 2000.0  # Цена не изменилась
+
+    # Неуспешное изменение (ноль)
+    sample_product.price = 0
+    captured = capsys.readouterr()
+    assert "Цена не должна быть нулевая или отрицательная" in captured.out
+    assert sample_product.price == 2000.0
